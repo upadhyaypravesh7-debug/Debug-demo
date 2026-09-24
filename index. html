@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CineFrame — Book Movie Tickets</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    /* CineFrame is intentionally a fixed dark, cinema-lobby theme — like most
+       streaming/ticketing apps, the dark palette IS the brand, not a mode. */
+    --bg:#120F16;
+    --surface:#1E1926;
+    --surface-2:#271F30;
+    --line:#332B3E;
+    --text:#F3EEE6;
+    --text-muted:#A99FB3;
+    --gold:#E8B24C;
+    --gold-dim:#8C6C2E;
+    --red:#C1443C;
+    --green:#5E9C6B;
+    --radius:10px;
+    --font-display:'Bebas Neue', 'Arial Narrow', sans-serif;
+    --font-body:'Inter', -apple-system, sans-serif;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html,body{background:var(--bg); color:var(--text); font-family:var(--font-body); overflow-x:hidden;}
+  body{min-height:100vh; padding-bottom:40px;}
+  img{max-width:100%; display:block;}
+  button{font-family:inherit; cursor:pointer; border:none; background:none; color:inherit;}
+  a{color:inherit;}
+
+  .wide{max-width:1000px; margin:0 auto; padding:0 20px;}
+
+  /* ---------- Header ---------- */
+  header.top{
+    border-bottom:1px solid var(--line);
+    padding:18px 0;
+    position:sticky; top:0; background:rgba(18,15,22,0.92); backdrop-filter:blur(6px);
+    z-index:20;
+  }
+  .top-row{display:flex; align-items:center; gap:20px; justify-content:space-between;}
+  .brand{font-family:var(--font-display); font-size:28px; letter-spacing:1px; color:var(--gold); cursor:pointer; white-space:nowrap;}
+  .top-actions{display:flex; align-items:center; gap:14px;}
+  .city-pick{font-size:14px; color:var(--text-muted); border:1px solid var(--line); border-radius:20px; padding:7px 14px;}
+  .search-box{
+    flex:1; max-width:340px; background:var(--surface); border:1px solid var(--line);
+    border-radius:20px; padding:8px 16px; font-size:14px; color:var(--text-muted);
+  }
+  .btn-login{
+    background:var(--gold); color:#1A1208; font-weight:600; font-size:14px;
+    padding:9px 18px; border-radius:20px;
+  }
+
+  /* ---------- Screen wrapper ---------- */
+  .screen{display:none; animation:slideIn .35s ease;}
+  .screen.active{display:block;}
+  @keyframes slideIn{ from{opacity:0; transform:translateY(10px);} to{opacity:1; transform:translateY(0);} }
+  @media (prefers-reduced-motion: reduce){ .screen{animation:none;} }
+
+  .section-title{
+    font-family:var(--font-display); font-size:26px; letter-spacing:0.5px;
+    margin:34px 0 16px; color:var(--text);
+  }
+
+  /* ---------- Home: movie grid ---------- */
+  .movie-grid{display:grid; grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); gap:18px;}
+  .movie-card{cursor:pointer; transition:transform .15s ease;}
+  .movie-card:hover{transform:translateY(-4px);}
+  .poster{
+    aspect-ratio:2/3; border-radius:var(--radius); display:flex; align-items:flex-end;
+    padding:12px; position:relative; overflow:hidden; border:1px solid var(--line);
+  }
+  .poster-tag{
+    position:absolute; top:10px; left:10px; font-size:10px; font-weight:700;
+    letter-spacing:0.5px; background:rgba(0,0,0,0.45); padding:3px 8px; border-radius:20px;
+  }
+  .poster-title{font-family:var(--font-display); font-size:22px; line-height:1; color:#fff; text-shadow:0 2px 8px rgba(0,0,0,0.6);}
+  .movie-meta{padding:10px 2px 0; font-size:12.5px; color:var(--text-muted);}
+  .movie-meta b{color:var(--text); font-weight:600;}
+  .rating{color:var(--gold); font-weight:700;}
+
+  /* ---------- Detail screen ---------- */
+  .back-link{display:inline-flex; align-items:center; gap:6px; color:var(--text-muted); font-size:14px; margin:20px 0 10px; cursor:pointer;}
+  .back-link:hover{color:var(--text);}
+  .detail-hero{display:grid; grid-template-columns:200px 1fr; gap:28px; align-items:start; margin-top:10px;}
+  @media (max-width:600px){ .detail-hero{grid-template-columns:1fr;} }
+  .detail-poster{aspect-ratio:2/3; border-radius:var(--radius); border:1px solid var(--line);}
+  .detail-title{font-family:var(--font-display); font-size:40px; letter-spacing:0.5px; line-height:1;}
+  .tag-row{display:flex; gap:8px; flex-wrap:wrap; margin:12px 0;}
+  .tag{font-size:12px; border:1px solid var(--line); padding:4px 10px; border-radius:20px; color:var(--text-muted);}
+  .synopsis{color:var(--text-muted); font-size:14.5px; line-height:1.6; max-width:60ch; margin:14px 0 20px;}
+  .btn-primary{
+    background:var(--gold); color:#1A1208; font-weight:700; font-size:15px;
+    padding:13px 26px; border-radius:8px; display:inline-block;
+  }
+  .btn-primary:disabled{background:var(--gold-dim); color:#5A4A2E; cursor:not-allowed;}
+  .btn-secondary{
+    background:var(--surface); border:1px solid var(--line); color:var(--text);
+    font-weight:600; font-size:15px; padding:12px 24px; border-radius:8px;
+  }
+
+  /* Showtime picker */
+  .date-row{display:flex; gap:10px; overflow-x:auto; padding:16px 0 6px;}
+  .date-chip{
+    flex:0 0 auto; text-align:center; border:1px solid var(--line); border-radius:10px;
+    padding:10px 16px; font-size:13px; color:var(--text-muted); min-width:56px;
+  }
+  .date-chip.active{border-color:var(--gold); color:var(--gold); background:rgba(232,178,76,0.08);}
+  .cinema-block{border-top:1px solid var(--line); padding:18px 0;}
+  .cinema-name{font-weight:700; font-size:15px; margin-bottom:10px;}
+  .time-row{display:flex; gap:10px; flex-wrap:wrap;}
+  .time-chip{
+    border:1px solid var(--line); border-radius:8px; padding:9px 16px; font-size:13.5px;
+  }
+  .time-chip.selected{border-color:var(--gold); background:var(--gold); color:#1A1208; font-weight:700;}
+  .time-format{display:block; font-size:10px; color:var(--text-muted); margin-top:2px;}
+  .time-chip.selected .time-format{color:#4A3A18;}
+
+  /* ---------- Seat screen ---------- */
+  .screen-indicator{
+    width:100%; max-width:480px; margin:30px auto 40px; text-align:center;
+  }
+  .screen-curve{
+    height:8px; border-radius:50%; background:linear-gradient(90deg, transparent, var(--gold), transparent);
+    box-shadow:0 0 24px 4px rgba(232,178,76,0.35); margin-bottom:8px;
+  }
+  .screen-label{font-size:11px; letter-spacing:3px; color:var(--text-muted);}
+  .seat-map{display:flex; flex-direction:column; align-items:center; gap:8px; margin-bottom:10px;}
+  .seat-row{display:flex; align-items:center; gap:8px;}
+  .row-label{width:18px; font-size:12px; color:var(--text-muted); text-align:right;}
+  .seat{
+    width:26px; height:26px; border-radius:6px 6px 8px 8px; border:1.5px solid var(--line);
+    background:var(--surface-2); transition:transform .12s ease;
+  }
+  .seat.premium{border-color:var(--gold-dim);}
+  .seat.booked{background:var(--surface); border-color:var(--line); opacity:0.35; cursor:not-allowed;}
+  .seat.selected{background:var(--gold); border-color:var(--gold); transform:scale(1.12);}
+  .seat:not(.booked):hover{border-color:var(--gold);}
+  .legend{display:flex; justify-content:center; gap:22px; font-size:12px; color:var(--text-muted); flex-wrap:wrap; margin:20px 0 10px;}
+  .legend-item{display:flex; align-items:center; gap:6px;}
+  .legend .seat{width:16px; height:16px;}
+
+  .sticky-bar{
+    position:sticky; bottom:0; background:var(--surface); border-top:1px solid var(--line);
+    margin-top:26px; padding:16px 20px; display:flex; justify-content:space-between; align-items:center;
+    border-radius:var(--radius) var(--radius) 0 0;
+  }
+  .sticky-bar .price{font-family:var(--font-display); font-size:22px; color:var(--gold);}
+  .sticky-bar .sub{font-size:12px; color:var(--text-muted);}
+
+  /* ---------- Checkout ---------- */
+  .summary-card{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:22px; margin-top:20px;}
+  .summary-row{display:flex; justify-content:space-between; padding:9px 0; font-size:14px; border-bottom:1px solid var(--line);}
+  .summary-row:last-child{border-bottom:none;}
+  .summary-row .label{color:var(--text-muted);}
+  .pay-methods{display:flex; gap:10px; margin:20px 0; flex-wrap:wrap;}
+  .pay-chip{border:1px solid var(--line); border-radius:8px; padding:10px 18px; font-size:14px;}
+  .pay-chip.selected{border-color:var(--gold); background:rgba(232,178,76,0.1); color:var(--gold); font-weight:600;}
+
+  /* ---------- Confirmation ---------- */
+  .confirm-wrap{max-width:420px; margin:40px auto 0; text-align:center;}
+  .check-badge{
+    width:60px; height:60px; border-radius:50%; background:var(--green); color:#fff;
+    display:flex; align-items:center; justify-content:center; font-size:30px; margin:0 auto 16px;
+  }
+  .ticket{
+    background:var(--surface); border:1px solid var(--line); border-radius:14px; margin-top:26px;
+    text-align:left; overflow:hidden;
+  }
+  .ticket-top{padding:20px 22px;}
+  .ticket-movie{font-family:var(--font-display); font-size:24px;}
+  .ticket-grid{display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:16px;}
+  .ticket-field{font-size:11px; color:var(--text-muted); letter-spacing:0.5px;}
+  .ticket-field b{display:block; font-size:14px; color:var(--text); font-weight:600; margin-top:2px;}
+  .ticket-tear{
+    border-top:1.5px dashed var(--line); position:relative;
+  }
+  .qr-block{padding:22px; display:flex; justify-content:center; background:var(--surface-2);}
+  .qr{width:110px; height:110px; background:#fff; border-radius:6px; padding:8px;}
+  .qr svg{width:100%; height:100%;}
+
+  .ghost{color:var(--text-muted); font-size:13px; margin-top:26px;}
+
+  /* ---------- Trailer modal ---------- */
+  .modal-backdrop{
+    display:none; position:fixed; inset:0; background:rgba(8,6,10,0.85);
+    z-index:100; align-items:center; justify-content:center; padding:20px;
+    animation:fadeIn .2s ease;
+  }
+  .modal-backdrop.active{display:flex;}
+  @keyframes fadeIn{ from{opacity:0;} to{opacity:1;} }
+  .modal-box{width:100%; max-width:720px; position:relative;}
+  .modal-close{
+    position:absolute; top:-42px; right:0; color:var(--text); font-size:20px;
+    background:var(--surface); border:1px solid var(--line); width:34px; height:34px;
+    border-radius:50%;
+  }
+  .video-wrap{position:relative; width:100%; padding-top:56.25%; border-radius:10px; overflow:hidden; background:#000;}
+  .video-wrap iframe{position:absolute; inset:0; width:100%; height:100%; border:0;}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wide top-row">
+    <div class="brand" onclick="go('home')">🎬 CineFrame</div>
+    <div class="search-box">Search movies…</div>
+    <div class="top-actions">
+      <div class="city-pick">📍 Mumbai</div>
+      <button class="btn-login">Log in</button>
+    </div>
+  </div>
+</header>
+
+<main class="wide">
+
+  <!-- ======================= HOME ======================= -->
+  <section id="home" class="screen active">
+    <h2 class="section-title">Now showing</h2>
+    <div class="movie-grid" id="nowShowingGrid"></div>
+
+    <h2 class="section-title">Coming soon</h2>
+    <div class="movie-grid" id="comingSoonGrid"></div>
+  </section>
+
+  <!-- ======================= DETAIL ======================= -->
+  <section id="detail" class="screen">
+    <div class="back-link" onclick="go('home')">← Back to movies</div>
+    <div class="detail-hero">
+      <div class="detail-poster" id="detailPoster"></div>
+      <div>
+        <div class="detail-title" id="detailTitle"></div>
+        <div class="tag-row" id="detailTags"></div>
+        <p class="synopsis" id="detailSynopsis"></p>
+        <div style="display:flex; gap:12px; flex-wrap:wrap;">
+          <button class="btn-primary" onclick="go('showtime')">Book tickets</button>
+          <button class="btn-secondary" onclick="openTrailer()">▶ Watch trailer</button>
+        </div>
+      </div>
+    </div>
+
+    <h2 class="section-title" style="margin-top:44px;">Select date</h2>
+    <div class="date-row" id="dateRow"></div>
+
+    <div id="cinemaList"></div>
+  </section>
+
+  <!-- ======================= SHOWTIME (re-uses detail for now, kept as anchor) ======================= -->
+  <section id="showtime" class="screen">
+    <div class="back-link" onclick="go('detail')">← Back</div>
+    <h2 class="section-title" style="margin-top:6px;">Pick a showtime</h2>
+    <div id="cinemaList2"></div>
+  </section>
+
+  <!-- ======================= SEATS ======================= -->
+  <section id="seats" class="screen">
+    <div class="back-link" onclick="go('detail')">← Change showtime</div>
+    <h2 class="section-title" id="seatHeading" style="margin-top:6px;"></h2>
+
+    <div class="screen-indicator">
+      <div class="screen-curve"></div>
+      <div class="screen-label">S C R E E N&nbsp;&nbsp;T H I S&nbsp;&nbsp;W A Y</div>
+    </div>
+
+    <div class="seat-map" id="seatMap"></div>
+
+    <div class="legend">
+      <div class="legend-item"><span class="seat"></span> Available</div>
+      <div class="legend-item"><span class="seat premium"></span> Premium</div>
+      <div class="legend-item"><span class="seat selected"></span> Selected</div>
+      <div class="legend-item"><span class="seat booked"></span> Booked</div>
+    </div>
+
+    <div class="sticky-bar">
+      <div>
+        <div class="price" id="seatPrice">₹0</div>
+        <div class="sub" id="seatCount">0 seats selected</div>
+      </div>
+      <button class="btn-primary" id="proceedBtn" disabled onclick="go('checkout')">Proceed</button>
+    </div>
+  </section>
+
+  <!-- ======================= CHECKOUT ======================= -->
+  <section id="checkout" class="screen">
+    <div class="back-link" onclick="go('seats')">← Back to seats</div>
+    <h2 class="section-title" style="margin-top:6px;">Order summary</h2>
+
+    <div class="summary-card">
+      <div class="summary-row"><span class="label">Movie</span><span id="coMovie"></span></div>
+      <div class="summary-row"><span class="label">Cinema</span><span id="coCinema"></span></div>
+      <div class="summary-row"><span class="label">Date &amp; time</span><span id="coDateTime"></span></div>
+      <div class="summary-row"><span class="label">Seats</span><span id="coSeats"></span></div>
+      <div class="summary-row"><span class="label">Ticket price</span><span id="coTicket"></span></div>
+      <div class="summary-row"><span class="label">Convenience fee</span><span id="coFee"></span></div>
+      <div class="summary-row"><b>Total</b><b class="price" style="color:var(--gold)" id="coTotal"></b></div>
+    </div>
+
+    <h2 class="section-title">Payment method</h2>
+    <div class="pay-methods" id="payMethods"></div>
+
+    <button class="btn-primary" style="width:100%; text-align:center; margin-top:6px;" onclick="confirmBooking()">Pay &amp; confirm</button>
+  </section>
+
+  <!-- ======================= CONFIRMATION ======================= -->
+  <section id="confirm" class="screen">
+    <div class="confirm-wrap">
+      <div class="check-badge">✓</div>
+      <div class="section-title" style="margin:0;">Booking confirmed</div>
+      <p class="ghost">A copy of your e-ticket has been sent to your email.</p>
+
+      <div class="ticket">
+        <div class="ticket-top">
+          <div class="ticket-movie" id="tkMovie"></div>
+          <div class="ticket-grid">
+            <div class="ticket-field">CINEMA<b id="tkCinema"></b></div>
+            <div class="ticket-field">SCREEN<b id="tkScreen"></b></div>
+            <div class="ticket-field">DATE &amp; TIME<b id="tkDateTime"></b></div>
+            <div class="ticket-field">SEATS<b id="tkSeats"></b></div>
+            <div class="ticket-field">BOOKING ID<b id="tkId"></b></div>
+            <div class="ticket-field">AMOUNT PAID<b id="tkAmount"></b></div>
+          </div>
+        </div>
+        <div class="ticket-tear"></div>
+        <div class="qr-block">
+          <div class="qr" id="qrHolder"></div>
+        </div>
+      </div>
+
+      <button class="btn-secondary" style="margin-top:24px;" onclick="go('home')">Back to home</button>
+    </div>
+  </section>
+
+</main>
+
+<!-- ======================= TRAILER MODAL ======================= -->
+<div class="modal-backdrop" id="trailerModal" onclick="if(event.target===this) closeTrailer()">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeTrailer()">✕</button>
+    <div class="video-wrap" id="videoWrap"></div>
+  </div>
+</div>
+
+<script>
+/* ======================= HARDCODED DATA ======================= */
+const MOVIES = [
+  {id:1, title:"Ashen Horizon", genre:"Sci-Fi · Action", lang:"English", rating:"8.4", duration:"2h 18m",
+   colors:["#3A2E52","#151022"], status:"now", trailerId:"aqz-KE-bpKQ",
+   synopsis:"A salvage crew stumbles on a signal from a ship that vanished decades ago — and wakes something that was never meant to be found."},
+  {id:2, title:"Paper Tigers", genre:"Drama", lang:"Hindi", rating:"7.9", duration:"2h 05m",
+   colors:["#5C3A2E","#1E1510"], status:"now", trailerId:"aqz-KE-bpKQ",
+   synopsis:"Three estranged siblings return to their childhood home to settle their father's debts, and everything else they never said."},
+  {id:3, title:"Midnight Reel", genre:"Thriller", lang:"English", rating:"8.1", duration:"1h 58m",
+   colors:["#2E4A52","#0F1A1E"], status:"now", trailerId:"aqz-KE-bpKQ",
+   synopsis:"A projectionist at a dying single-screen cinema starts seeing the same stranger in every film she runs."},
+  {id:4, title:"Kaali Raat", genre:"Horror", lang:"Hindi", rating:"7.2", duration:"2h 02m",
+   colors:["#4A1E22","#180B0C"], status:"now", trailerId:"aqz-KE-bpKQ",
+   synopsis:"A village stops answering calls the night the power goes out for the thirteenth year in a row."},
+  {id:5, title:"Small Gods", genre:"Fantasy · Adventure", lang:"English", rating:"8.7", duration:"2h 31m",
+   colors:["#2E4A2E","#0F1E10"], status:"coming", trailerId:"aqz-KE-bpKQ",
+   synopsis:"An apprentice cartographer is handed a map of a kingdom that hasn't existed in three hundred years — and told to deliver it."},
+  {id:6, title:"The Long Applause", genre:"Musical · Drama", lang:"English", rating:"7.6", duration:"2h 10m",
+   colors:["#524A2E","#1E1A0F"], status:"coming", trailerId:"aqz-KE-bpKQ",
+   synopsis:"A touring orchestra's last violinist has one season left before her hearing goes — and one symphony left to finish."}
+];
+// NOTE: trailerId is a YouTube video ID. All movies point to the same placeholder
+// (a freely-licensed short film trailer) since these movies are fictional demo data.
+// In your real app, replace each with that movie's actual official trailer ID.
+
+const CINEMAS = [
+  {name:"PVR Marquee, Phoenix Mall", times:[
+    {t:"10:15 AM", fmt:"2D"}, {t:"1:30 PM", fmt:"2D"}, {t:"4:45 PM", fmt:"IMAX"}, {t:"9:00 PM", fmt:"2D"}
+  ]},
+  {name:"INOX Grand Central", times:[
+    {t:"11:00 AM", fmt:"2D"}, {t:"2:45 PM", fmt:"3D"}, {t:"7:15 PM", fmt:"2D"}
+  ]},
+  {name:"Cinepolis Riverside", times:[
+    {t:"12:30 PM", fmt:"2D"}, {t:"6:00 PM", fmt:"2D"}, {t:"10:30 PM", fmt:"IMAX"}
+  ]}
+];
+
+const DATES = (() => {
+  const out = [];
+  const base = new Date();
+  for (let i = 0; i < 6; i++) {
+    const d = new Date(base);
+    d.setDate(base.getDate() + i);
+    out.push({
+      label: d.toLocaleDateString(undefined,{weekday:'short'}),
+      num: d.getDate(),
+      full: d.toLocaleDateString(undefined,{weekday:'short', day:'numeric', month:'short'})
+    });
+  }
+  return out;
+})();
+
+const PAY_METHODS = ["Credit / Debit card", "UPI", "Wallet"];
+const TICKET_PRICE = 280;
+const PREMIUM_PRICE = 380;
+const CONVENIENCE_FEE = 45;
+const SEAT_ROWS = ["A","B","C","D","E","F"];
+const SEATS_PER_ROW = 10;
+const PREMIUM_ROWS = ["E","F"];
+
+/* ======================= STATE ======================= */
+let state = {
+  movie: null,
+  dateIdx: 0,
+  cinema: null,
+  time: null,
+  selectedSeats: [],
+  bookedSeats: [],
+  payMethod: null
+};
+
+/* ======================= NAVIGATION ======================= */
+function go(screenId){
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(screenId).classList.add('active');
+  window.scrollTo({top:0, behavior:'smooth'});
+  if (screenId === 'seats') renderSeats();
+  if (screenId === 'checkout') renderCheckout();
+}
+
+
+function posterStyle(m){
+  return `background:linear-gradient(160deg, ${m.colors[0]}, ${m.colors[1]});`;
+}
+
+function renderMovieCard(m){
+  return `
+    <div class="movie-card" onclick="openMovie(${m.id})">
+      <div class="poster" style="${posterStyle(m)}">
+        <span class="poster-tag">${m.lang}</span>
+        <span class="poster-title">${m.title}</span>
+      </div>
+      <div class="movie-meta">
+        <span class="rating">★ ${m.rating}</span> · ${m.duration}<br>
+        <b>${m.genre}</b>
+      </div>
+    </div>`;
+}
+
+function renderHome(){
+  document.getElementById('nowShowingGrid').innerHTML =
+    MOVIES.filter(m => m.status === 'now').map(renderMovieCard).join('');
+  document.getElementById('comingSoonGrid').innerHTML =
+    MOVIES.filter(m => m.status === 'coming').map(renderMovieCard).join('');
+}
+
+
+function openTrailer(){
+  const id = state.movie.trailerId;
+  document.getElementById('videoWrap').innerHTML =
+    `<iframe src="https://www.youtube.com/embed/${id}?autoplay=1&rel=0"
+       allow="autoplay; encrypted-media" allowfullscreen title="Trailer"></iframe>`;
+  document.getElementById('trailerModal').classList.add('active');
+}
+function closeTrailer(){
+  document.getElementById('trailerModal').classList.remove('active');
+  document.getElementById('videoWrap').innerHTML = ''; //
+function openMovie(id){
+  const m = MOVIES.find(x => x.id === id);
+  state.movie = m;
+  state.dateIdx = 0;
+  state.cinema = null;
+  state.time = null;
+
+  document.getElementById('detailPoster').style.cssText = posterStyle(m) + 'border-radius:10px;';
+  document.getElementById('detailTitle').textContent = m.title;
+  document.getElementById('detailTags').innerHTML =
+    [m.genre, m.lang, m.duration, `★ ${m.rating}`].map(t => `<span class="tag">${t}</span>`).join('');
+  document.getElementById('detailSynopsis').textContent = m.synopsis;
+
+  renderDateRow();
+  renderCinemaList('cinemaList');
+  renderCinemaList('cinemaList2');
+  go('detail');
+}
+
+function renderDateRow(){
+  document.getElementById('dateRow').innerHTML = DATES.map((d, i) => `
+    <div class="date-chip ${i === state.dateIdx ? 'active' : ''}" onclick="pickDate(${i})">
+      ${d.label}<br><b>${d.num}</b>
+    </div>`).join('');
+}
+
+function pickDate(i){
+  state.dateIdx = i;
+  state.cinema = null; state.time = null;
+  renderDateRow();
+}
+
+function renderCinemaList(targetId){
+  document.getElementById(targetId).innerHTML = CINEMAS.map(c => `
+    <div class="cinema-block">
+      <div class="cinema-name">${c.name}</div>
+      <div class="time-row">
+        ${c.times.map(t => `
+          <div class="time-chip ${state.cinema===c.name && state.time===t.t ? 'selected':''}"
+               onclick="pickTime('${c.name.replace(/'/g,"\\'")}','${t.t}')">
+            ${t.t}<span class="time-format">${t.fmt}</span>
+          </div>`).join('')}
+      </div>
+    </div>`).join('');
+}
+
+function pickTime(cinema, time){
+  state.cinema = cinema;
+  state.time = time;
+  renderCinemaList('cinemaList');
+  renderCinemaList('cinemaList2');
+  state.selectedSeats = [];
+  generateBookedSeats();
+  go('seats');
+}
+
+
+function generateBookedSeats(){
+  // deterministic-ish "randomness" seeded by cinema+time so it feels stable per showtime
+  const seed = (state.cinema + state.time).split('').reduce((a,c)=>a+c.charCodeAt(0),0);
+  const booked = [];
+  let x = seed;
+  for (let i = 0; i < 9; i++){
+    x = (x * 9301 + 49297) % 233280;
+    const row = SEAT_ROWS[x % SEAT_ROWS.length];
+    const num = (x % SEATS_PER_ROW) + 1;
+    booked.push(row + num);
+  }
+  state.bookedSeats = [...new Set(booked)];
+}
+
+function seatPriceFor(row){
+  return PREMIUM_ROWS.includes(row) ? PREMIUM_PRICE : TICKET_PRICE;
+}
+
+function renderSeats(){
+  document.getElementById('seatHeading').textContent =
+    `${state.movie.title} · ${state.cinema} · ${DATES[state.dateIdx].full}, ${state.time}`;
+
+  let html = '';
+  SEAT_ROWS.forEach(row => {
+    html += `<div class="seat-row"><div class="row-label">${row}</div>`;
+    for (let n = 1; n <= SEATS_PER_ROW; n++){
+      const id = row + n;
+      const isBooked = state.bookedSeats.includes(id);
+      const isPremium = PREMIUM_ROWS.includes(row);
+      const isSelected = state.selectedSeats.includes(id);
+      const cls = ['seat', isPremium ? 'premium':'', isBooked?'booked':'', isSelected?'selected':''].join(' ').trim();
+      html += `<button class="${cls}" ${isBooked?'disabled':''} onclick="toggleSeat('${id}')" title="${id}"></button>`;
+    }
+    html += `</div>`;
+  });
+  document.getElementById('seatMap').innerHTML = html;
+  updateSeatBar();
+}
+
+function toggleSeat(id){
+  const idx = state.selectedSeats.indexOf(id);
+  if (idx > -1) state.selectedSeats.splice(idx,1);
+  else state.selectedSeats.push(id);
+  renderSeats();
+}
+
+function updateSeatBar(){
+  const total = state.selectedSeats.reduce((sum, id) => sum + seatPriceFor(id[0]), 0);
+  document.getElementById('seatPrice').textContent = `₹${total}`;
+  document.getElementById('seatCount').textContent = `${state.selectedSeats.length} seat${state.selectedSeats.length!==1?'s':''} selected`;
+  document.getElementById('proceedBtn').disabled = state.selectedSeats.length === 0;
+}
+
+
+function renderCheckout(){
+  const ticketTotal = state.selectedSeats.reduce((sum, id) => sum + seatPriceFor(id[0]), 0);
+  const fee = CONVENIENCE_FEE * state.selectedSeats.length;
+  document.getElementById('coMovie').textContent = state.movie.title;
+  document.getElementById('coCinema').textContent = state.cinema;
+  document.getElementById('coDateTime').textContent = `${DATES[state.dateIdx].full}, ${state.time}`;
+  document.getElementById('coSeats').textContent = state.selectedSeats.sort().join(', ');
+  document.getElementById('coTicket').textContent = `₹${ticketTotal}`;
+  document.getElementById('coFee').textContent = `₹${fee}`;
+  document.getElementById('coTotal').textContent = `₹${ticketTotal + fee}`;
+
+  document.getElementById('payMethods').innerHTML = PAY_METHODS.map(p => `
+    <div class="pay-chip ${state.payMethod===p?'selected':''}" onclick="pickPay('${p}')">${p}</div>
+  `).join('');
+}
+
+function pickPay(p){
+  state.payMethod = p;
+  renderCheckout();
+}
+
+
+function confirmBooking(){
+  if (!state.payMethod){ alert('Pick a payment method to continue.'); return; }
+  const ticketTotal = state.selectedSeats.reduce((sum, id) => sum + seatPriceFor(id[0]), 0);
+  const fee = CONVENIENCE_FEE * state.selectedSeats.length;
+  const bookingId = 'CF' + Math.random().toString(36).slice(2,8).toUpperCase();
+
+  document.getElementById('tkMovie').textContent = state.movie.title;
+  document.getElementById('tkCinema').textContent = state.cinema;
+  document.getElementById('tkScreen').textContent = 'Screen 4';
+  document.getElementById('tkDateTime').textContent = `${DATES[state.dateIdx].full}, ${state.time}`;
+  document.getElementById('tkSeats').textContent = state.selectedSeats.sort().join(', ');
+  document.getElementById('tkId').textContent = bookingId;
+  document.getElementById('tkAmount').textContent = `₹${ticketTotal + fee}`;
+
+  document.getElementById('qrHolder').innerHTML = fakeQr(bookingId);
+  go('confirm');
+}
+
+// A stylized (non-scannable) QR-pattern placeholder, seeded from the booking id
+function fakeQr(seedStr){
+  let seed = seedStr.split('').reduce((a,c)=>a+c.charCodeAt(0),0);
+  const cells = 8;
+  let rects = '';
+  for (let y = 0; y < cells; y++){
+    for (let x = 0; x < cells; x++){
+      seed = (seed * 9301 + 49297) % 233280;
+      if (seed % 2 === 0){
+        rects += `<rect x="${x}" y="${y}" width="1" height="1" fill="#120F16"/>`;
+      }
+    }
+  }
+  return `<svg viewBox="0 0 ${cells} ${cells}">${rects}</svg>`;
+}
+
+renderHome();
+</script>
+</body>
+</html>
