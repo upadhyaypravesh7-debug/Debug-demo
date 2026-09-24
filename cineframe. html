@@ -1,0 +1,29 @@
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CineFrame — Book Movie Tickets</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    /* CineFrame is intentionally a fixed dark, cinema-lobby theme — like most
+       streaming/ticketing apps, the dark palette IS the brand, not a mode. */
+    --bg:#120F16;
+    --surface:#1E1926;
+    --surface-2:#271F30;
+    --line:#332B3E;
+    --text:#F3EEE6;
+    --text-muted:#A99FB3;
+    --gold:#E8B24C;
+    --gold-dim:#8C6C2E;
+    --red:#C1443C;
+    --green:#5E9C6B;
+    --radius:10px;
+    --font-display:'Bebas Neue', 'Arial Narrow', sans-serif;
+    --font-body:'Inter', -apple-system, sans-serif;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html,body{background:var(--bg); color:var(--text); font-family:var(--font-body); overflow-x:hidden;}
+  body{min-height:100vh; padding-bottom:40px;}
